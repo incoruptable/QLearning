@@ -71,10 +71,24 @@ public class QLearning {
             //Choose action
             Action action;
             if (rand.nextDouble() < exploreVal) {
+
+                //EXPLORE
                 int actionChoice = rand.nextInt(4);
                 action = actions.get(actionChoice);
             } else {
 
+                //EXPLOIT
+                int actionChoice = 0;
+                for (int candidate = 0; candidate < 4; candidate++) {
+                    if (qTable[currentX][currentY][candidate] > qTable[currentX][currentY][actionChoice]) {
+                        actionChoice = candidate;
+                    }
+                }
+                if (actionChoice == 0) {
+                    actionChoice = rand.nextInt(4);
+                }
+
+                action = actions.get(actionChoice);
             }
         }
 
