@@ -11,7 +11,7 @@ public class QLearning {
     private final static int BOARD_HEIGHT = 10;
     private final static int PENALTY_OUT_OF_BOUNDS = -50;
     private final static int PENALTY_BARRIER = -100;
-    private final static int PENALTY_FOR_MOVING = -5;
+    private final static int PENALTY_FOR_MOVING = 0;
     private final static int REWARD_GOAL = 500;
     private Random rand;
     private char[][] board;
@@ -71,7 +71,7 @@ public class QLearning {
         int currentY = BOARD_HEIGHT - 1;
         int futureX;
         int futureY;
-        double exploreVal = .15;
+        double exploreVal = .05;
         double alphaK = .1;
         double gamma = .97;
 
@@ -99,6 +99,9 @@ public class QLearning {
 
 
             //Do action
+            if (rand.nextDouble() < .15) {
+                actionChoice = rand.nextInt(4);
+            }
             futureX = actions.get(actionChoice).getDeltaX() + currentX;
             futureY = actions.get(actionChoice).getDeltaY() + currentY;
 
