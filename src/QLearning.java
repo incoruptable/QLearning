@@ -9,25 +9,30 @@ public class QLearning {
 
     private final static int BOARD_WIDTH = 20;
     private final static int BOARD_HEIGHT = 10;
+    private final static int PENALTY_OUT_OF_BOUNDS = -50;
+    private final static int PENALTY_BARRIER = -100;
+    private final static int PENALTY_FOR_MOVING = -5;
+    private final static int REWARD_GOAL = 500;
     private Random rand;
     private char[][] board;
-    private int[][][] qTable;
+    private double[][][] qTable;
     private List<Action> actions;
 
     public QLearning() {
-        qTable = new int[BOARD_WIDTH][BOARD_HEIGHT][4];
+        qTable = new double[BOARD_WIDTH][BOARD_HEIGHT][4];
         board = new char[BOARD_WIDTH][BOARD_HEIGHT];
 
         actions = new LinkedList<>();
-        actions.add(Action.UP);
-        actions.add(Action.RIGHT);
-        actions.add(Action.DOWN);
-        actions.add(Action.LEFT);
+        actions.add(Action.UP); //0
+        actions.add(Action.RIGHT); //1
+        actions.add(Action.DOWN); //2
+        actions.add(Action.LEFT); //3
 
         rand = new Random();
         initializeBoard();
-        printBoard(this.board);
+        printBoard();
         qLearning();
+        printQTable();
     }
 
     public static void main(String[] args) {
@@ -54,31 +59,34 @@ public class QLearning {
         for (int i = 0; i < BOARD_WIDTH; i++) {
             for (int j = 0; j < BOARD_HEIGHT; j++) {
                 for (int k = 0; k < 4; k++) {
-                    qTable[i][j][k] = 0;
+                    qTable[i][j][k] = 0.0;
                 }
             }
         }
     }
 
     private void qLearning() {
-        int numIterations = 1000;
+        int numIterations = 1000000;
         int currentX = 0;
         int currentY = BOARD_HEIGHT - 1;
-        double exploreVal = .05;
+        int futureX;
+        int futureY;
+        double exploreVal = .15;
+        double alphaK = .1;
+        double gamma = .97;
 
         for (int iterations = 0; iterations < numIterations; iterations++) {
 
             //Choose action
-            Action action;
+            int actionChoice;
             if (rand.nextDouble() < exploreVal) {
 
                 //EXPLORE
-                int actionChoice = rand.nextInt(4);
-                action = actions.get(actionChoice);
+                actionChoice = rand.nextInt(4);
             } else {
 
                 //EXPLOIT
-                int actionChoice = 0;
+                actionChoice = 0;
                 for (int candidate = 0; candidate < 4; candidate++) {
                     if (qTable[currentX][currentY][candidate] > qTable[currentX][currentY][actionChoice]) {
                         actionChoice = candidate;
@@ -87,17 +95,97 @@ public class QLearning {
                 if (actionChoice == 0) {
                     actionChoice = rand.nextInt(4);
                 }
+            }
 
-                action = actions.get(actionChoice);
+
+            //Do action
+            futureX = actions.get(actionChoice).getDeltaX() + currentX;
+            futureY = actions.get(actionChoice).getDeltaY() + currentY;
+
+            //Learn
+            int rewardForAction = determineReward(futureX, futureY);
+            double futureBestAction = determineFutureBestAction(futureX, futureY);
+            qTable[currentX][currentY][actionChoice] = ((1 - alphaK) * qTable[currentX][currentY][actionChoice]) +
+                    (alphaK * (rewardForAction + (gamma * futureBestAction)));
+
+            if (!(futureX < 0 || futureX >= BOARD_WIDTH || futureY < 0 || futureY >= BOARD_HEIGHT)) {
+                if (board[futureX][futureY] == 'G') {
+                    currentX = 0;
+                    currentY = BOARD_HEIGHT - 1;
+                } else {
+                    currentX = futureX;
+                    currentY = futureY;
+                }
             }
         }
 
     }
 
-    private void printBoard(char[][] board) {
+    private int determineReward(int futureX, int futureY) {
+        if (futureX < 0 || futureX >= BOARD_WIDTH || futureY < 0 || futureY >= BOARD_HEIGHT) {
+            return PENALTY_OUT_OF_BOUNDS;
+        } else if (board[futureX][futureY] == '#') {
+            return PENALTY_BARRIER;
+        } else if (board[futureX][futureY] == 'G') {
+            return REWARD_GOAL;
+        } else {
+            return PENALTY_FOR_MOVING;
+        }
+    }
+
+    private double determineFutureBestAction(int futureX, int futureY) {
+        int actionChoice = 0;
+        if (futureX < 0 || futureX >= BOARD_WIDTH || futureY < 0 || futureY >= BOARD_HEIGHT) {
+            return 0;
+        }
+        for (int i = 0; i < 4; i++) {
+            if (qTable[futureX][futureY][i] > qTable[futureX][futureY][actionChoice]) {
+                actionChoice = i;
+            }
+        }
+        return qTable[futureX][futureY][actionChoice];
+    }
+
+    private void printBoard() {
+        System.out.print("\nPRINTING BOARD:\n");
         for (int j = 0; j < BOARD_HEIGHT; j++) {
             for (int i = 0; i < BOARD_WIDTH; i++) {
                 System.out.print(board[i][j]);
+            }
+            System.out.print("\n");
+        }
+    }
+
+    private void printQTable() {
+        System.out.print("\nPRINTING Q-TABLE:\n");
+        for (int j = 0; j < BOARD_HEIGHT; j++) {
+            for (int i = 0; i < BOARD_WIDTH; i++) {
+                if (board[i][j] == '#') {
+                    System.out.print('#');
+                } else if (board[i][j] == 'S') {
+                    System.out.print('S');
+                } else if (board[i][j] == 'G') {
+                    System.out.print('G');
+                } else {
+                    double bestValue = -2000000;
+                    int bestChoice = -1;
+                    for (int k = 0; k < 4; k++) {
+                        if (qTable[i][j][k] > bestValue) {
+                            bestValue = qTable[i][j][k];
+                            bestChoice = k;
+                        }
+                    }
+                    if (bestChoice == 0) {
+                        System.out.print('^');
+                    } else if (bestChoice == 1) {
+                        System.out.print('>');
+                    } else if (bestChoice == 2) {
+                        System.out.print('v');
+                    } else if (bestChoice == 3) {
+                        System.out.print('<');
+                    }
+                }
+
             }
             System.out.print("\n");
         }
